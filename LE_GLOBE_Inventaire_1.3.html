@@ -618,7 +618,7 @@ function beepSaisie(){
     o.connect(g);g.connect(_audioCtx.destination);
     o.frequency.value=880;
     o.type='sine';
-    g.gain.setValueAtTime(0.15,_audioCtx.currentTime);
+    g.gain.setValueAtTime(0.8,_audioCtx.currentTime);
     g.gain.exponentialRampToValueAtTime(0.001,_audioCtx.currentTime+0.08);
     o.start(_audioCtx.currentTime);
     o.stop(_audioCtx.currentTime+0.08);
