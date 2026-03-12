@@ -623,6 +623,7 @@ function beepSaisie(){
     o.start(_audioCtx.currentTime);
     o.stop(_audioCtx.currentTime+0.08);
   }catch(e){}
+  try{if(navigator.vibrate)navigator.vibrate(30);}catch(e){}
 }
 
 function updLieu(k,field,val){
