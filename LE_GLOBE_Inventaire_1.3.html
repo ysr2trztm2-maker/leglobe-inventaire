@@ -554,25 +554,62 @@ window.addEventListener('popstate',function(e){
 history.replaceState({page:'inv'},'','#');
 
 /* ============================================================
-   SAISIE RAPIDE — Entrée passe au champ suivant
+   SAISIE RAPIDE — Barre iOS + Entrée/Tab
 ============================================================ */
+function inpNext(t){
+  var all=Array.from(document.querySelectorAll('.inp:not([disabled])'));
+  var idx=all.indexOf(t);
+  if(idx===-1)return;
+  var next=all[idx+1];
+  if(next){next.focus();next.select();next.closest('.card')&&next.closest('.card').scrollIntoView({block:'nearest',behavior:'smooth'});}
+  else{t.blur();hideInpBar();}
+}
+function inpPrev(t){
+  var all=Array.from(document.querySelectorAll('.inp:not([disabled])'));
+  var idx=all.indexOf(t);
+  if(idx>0){var p=all[idx-1];p.focus();p.select();}
+}
+function hideInpBar(){
+  var b=document.getElementById('inp-bar');
+  if(b)b.style.display='none';
+}
+// Créer la barre flottante une seule fois
+(function(){
+  var bar=document.createElement('div');
+  bar.id='inp-bar';
+  bar.style.cssText='display:none;position:fixed;bottom:0;left:0;right:0;background:#1a2236;border-top:1px solid #334155;padding:8px 12px;display:none;justify-content:space-between;align-items:center;z-index:9999;gap:8px';
+  bar.innerHTML=
+    '<button onclick="inpPrev(_inpActive)" style="background:#334155;border:none;color:#f1f5f9;border-radius:8px;padding:10px 18px;font-size:16px;font-weight:700;cursor:pointer">‹ Préc</button>'+
+    '<span id="inp-bar-label" style="color:#94a3b8;font-size:13px;flex:1;text-align:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis"></span>'+
+    '<button onclick="inpNext(_inpActive)" style="background:#f0a500;border:none;color:#000;border-radius:8px;padding:10px 18px;font-size:16px;font-weight:700;cursor:pointer">Suivant ›</button>';
+  document.body.appendChild(bar);
+})();
+var _inpActive=null;
+document.addEventListener('focusin',function(e){
+  var t=e.target;
+  if(!t||!t.classList.contains('inp'))return;
+  _inpActive=t;
+  var bar=document.getElementById('inp-bar');
+  if(bar){
+    bar.style.display='flex';
+    var lbl=t.closest('.ig')&&t.closest('.ig').querySelector('.ilbl');
+    var card=t.closest('.card')&&t.closest('.card').querySelector('.cname,.pname,b');
+    document.getElementById('inp-bar-label').textContent=(card?card.textContent+' — ':'')+( lbl?lbl.textContent:'');
+  }
+});
+document.addEventListener('focusout',function(e){
+  var t=e.target;
+  if(!t||!t.classList.contains('inp'))return;
+  setTimeout(function(){
+    if(!document.activeElement||!document.activeElement.classList.contains('inp'))hideInpBar();
+  },150);
+});
 document.addEventListener('keydown',function(e){
   if(e.key!=='Enter'&&e.key!=='Tab')return;
   var t=e.target;
   if(!t||!t.classList.contains('inp'))return;
   e.preventDefault();
-  var all=Array.from(document.querySelectorAll('.inp:not([disabled])'));
-  var idx=all.indexOf(t);
-  if(idx===-1)return;
-  var next=all[idx+1];
-  if(next){
-    next.focus();
-    next.select();
-    // Scroll pour que le champ suivant soit visible
-    next.closest('.card')&&next.closest('.card').scrollIntoView({block:'nearest',behavior:'smooth'});
-  } else {
-    t.blur(); // dernier champ : ferme le clavier
-  }
+  inpNext(t);
 });
 
 /* ============================================================
