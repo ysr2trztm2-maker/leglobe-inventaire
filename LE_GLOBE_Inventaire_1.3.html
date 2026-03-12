@@ -440,6 +440,8 @@ var KEY_HISTORY="globe_history_v1";
 var KEY_LAYOUT="globe_layout_v1";
 var KEY_GIST_TOKEN="globe_gist_token";
 var KEY_GIST_ID="globe_gist_id";
+var KEY_DRAFT="globe_draft_v1";
+var _draftTimer=null;
 var lieuMode=false;
 var lieuLayout={};  // {lieu_id: [{catId, prodIdx, excluded},...]}
 var inventoryHistory=[];
@@ -515,16 +517,41 @@ function genId(){return "cat_"+Date.now()+"_"+Math.random().toString(36).substr(
 /* ============================================================
    NAVIGATION
 ============================================================ */
+var _currentPage='inv';
+
 function goSettings(){
+  _currentPage='settings';
   document.getElementById("page-inv").classList.remove("active");
   document.getElementById("page-settings").classList.add("active");
+  history.pushState({page:'settings'},'','#settings');
   renderSettings();
 }
 function goBack(){
+  _currentPage='inv';
   document.getElementById("page-settings").classList.remove("active");
   document.getElementById("page-inv").classList.add("active");
+  history.pushState({page:'inv'},'','#');
   renderAll();
 }
+
+// Gestion back/forward natif du navigateur
+window.addEventListener('popstate',function(e){
+  var page=(e.state&&e.state.page)||(location.hash==='#settings'?'settings':'inv');
+  if(page==='settings'&&_currentPage!=='settings'){
+    _currentPage='settings';
+    document.getElementById("page-inv").classList.remove("active");
+    document.getElementById("page-settings").classList.add("active");
+    renderSettings();
+  } else if(page==='inv'&&_currentPage!=='inv'){
+    _currentPage='inv';
+    document.getElementById("page-settings").classList.remove("active");
+    document.getElementById("page-inv").classList.add("active");
+    renderAll();
+  }
+});
+
+// État initial dans l'historique
+history.replaceState({page:'inv'},'','#');
 
 /* ============================================================
    INVENTAIRE — RENDER
@@ -554,6 +581,7 @@ function doSave(){
     localStorage.setItem(KEY_HISTORY,JSON.stringify(inventoryHistory));
 
     localStorage.setItem(KEY_STOCK,JSON.stringify(d));
+    clearDraft();
     Object.keys(stock).forEach(function(k){var lx={};LIEUX.forEach(function(l){lx[l.id]={u:"",p:""};});stock[k]={pv:snap[k].pv,sl:snap[k].sl,lieux:lx};});
     var b=document.getElementById("sbtn");b.textContent="✅ Validé !";b.className="savebtn ok";
     setTimeout(function(){b.textContent="✅ Valider l'inventaire";b.className="savebtn";},2500);
@@ -586,6 +614,50 @@ function updLieu(k,field,val){
   if(!stock[k].lieux[curLieu])stock[k].lieux[curLieu]={u:"",p:""};
   stock[k].lieux[curLieu][field]=val;
   refreshCard(k);renderStats();renderTabs();
+  scheduleDraftSave();
+}
+
+function scheduleDraftSave(){
+  clearTimeout(_draftTimer);
+  _draftTimer=setTimeout(function(){
+    localStorage.setItem(KEY_DRAFT,JSON.stringify({at:new Date().toISOString(),s:stock}));
+  },800);
+}
+
+function clearDraft(){
+  localStorage.removeItem(KEY_DRAFT);
+  var b=document.getElementById('draft-banner');
+  if(b)b.remove();
+}
+
+function restoreDraft(){
+  var raw=localStorage.getItem(KEY_DRAFT);
+  if(!raw)return;
+  var d=JSON.parse(raw);
+  stock=d.s;
+  clearDraft();
+  renderAll();
+  showToast('✅ Brouillon restauré');
+}
+
+function checkDraftOnLoad(){
+  var raw=localStorage.getItem(KEY_DRAFT);
+  if(!raw)return;
+  var d=JSON.parse(raw);
+  // Vérifier s'il y a des saisies dans le brouillon
+  var hasSaisie=Object.keys(d.s||{}).some(function(k){
+    var lx=d.s[k].lieux||{};
+    return Object.values(lx).some(function(v){return (v.u&&v.u!=='')||(v.p&&v.p!=='');});
+  });
+  if(!hasSaisie){clearDraft();return;}
+  var date=new Date(d.at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  var banner=document.createElement('div');
+  banner.id='draft-banner';
+  banner.style.cssText='position:fixed;bottom:70px;left:0;right:0;margin:0 12px;background:#1e3a5f;border:1px solid #3b82f6;border-radius:12px;padding:12px 14px;z-index:9999;display:flex;align-items:center;gap:10px;font-size:14px;color:#f1f5f9;box-shadow:0 4px 20px rgba(0,0,0,.4)';
+  banner.innerHTML='<span style="flex:1">📝 Brouillon du '+date+' — saisie non validée</span>'
+    +'<button onclick="restoreDraft()" style="background:#3b82f6;border:none;color:#fff;border-radius:8px;padding:7px 12px;font-weight:700;cursor:pointer;font-size:13px">Reprendre</button>'
+    +'<button onclick="clearDraft()" style="background:#334155;border:none;color:#94a3b8;border-radius:8px;padding:7px 10px;font-size:13px;cursor:pointer">✕</button>';
+  document.body.appendChild(banner);
 }
 
 function refreshCard(k){
@@ -2171,6 +2243,7 @@ initStock();
 loadStock();
 applyTheme();
 renderAll();
+checkDraftOnLoad();
 
 // Recalculer la hauteur du header après rendu complet
 setTimeout(function(){
