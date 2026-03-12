@@ -269,6 +269,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
       <div class="hbtns">
         <button class="settingsbtn" onclick="toggleTheme()" id="themebtn">☀️</button>
         <button class="settingsbtn" onclick="goSettings()">⚙️</button>
+        <span id="sync-badge" title="Sync Gist" style="font-size:16px;cursor:default;display:none"></span>
         <button class="savebtn" id="sbtn" onclick="doSaveWithConfirm()">✅ Valider l'inventaire</button>
         <button class="settingsbtn" id="undobtn" onclick="undoLastSave()" title="Annuler la dernière validation">↩️</button>
       </div>
@@ -2042,13 +2043,83 @@ function toggleTheme(){
 }
 
 /* ============================================================
-   GITHUB GIST SYNC
+   GITHUB GIST SYNC – TEMPS RÉEL
 ============================================================ */
+var _gistPushTimer=null;
+var _gistPushing=false;
+var _gistLastRemoteDate=null;
+var _gistIgnoreKeys=new Set([KEY_GIST_TOKEN,KEY_GIST_ID,'globe_theme']);
+
+// Intercepter localStorage.setItem pour déclencher l'auto-sync
+(function(){
+  var _orig=localStorage.setItem.bind(localStorage);
+  localStorage.setItem=function(k,v){
+    _orig(k,v);
+    if(!_gistIgnoreKeys.has(k)&&k.startsWith('globe_'))scheduleGistPush();
+  };
+})();
+
+function scheduleGistPush(){
+  var token=localStorage.getItem(KEY_GIST_TOKEN);
+  var gistId=localStorage.getItem(KEY_GIST_ID);
+  if(!token||!gistId)return;
+  clearTimeout(_gistPushTimer);
+  _gistPushTimer=setTimeout(gistPush,5000);
+  updateSyncBadge('pending');
+}
+
+async function gistPush(){
+  if(_gistPushing)return;
+  var token=localStorage.getItem(KEY_GIST_TOKEN);
+  var gistId=localStorage.getItem(KEY_GIST_ID);
+  if(!token||!gistId)return;
+  _gistPushing=true;
+  updateSyncBadge('syncing');
+  var data={version:4,date:new Date().toISOString(),shop:"LE GLOBE",cats:CATS,stock:stock,layout:lieuLayout,lieux:LIEUX,history:inventoryHistory};
+  try{
+    var resp=await fetch("https://api.github.com/gists/"+gistId,{method:"PATCH",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({files:{"globe_inventaire.json":{content:JSON.stringify(data,null,2)}}})});
+    if(resp.ok){_gistLastRemoteDate=data.date;updateSyncBadge('ok');}
+    else{updateSyncBadge('err');}
+  }catch(e){updateSyncBadge('err');}
+  _gistPushing=false;
+}
+
+async function gistPull(silent){
+  var token=localStorage.getItem(KEY_GIST_TOKEN);
+  var gistId=localStorage.getItem(KEY_GIST_ID);
+  if(!token||!gistId)return;
+  try{
+    var resp=await fetch("https://api.github.com/gists/"+gistId,{headers:{"Authorization":"Bearer "+token}});
+    if(!resp.ok)return;
+    var json=await resp.json();
+    var fc=json.files["globe_inventaire.json"];
+    if(!fc)return;
+    var data=JSON.parse(fc.content);
+    if(!data.cats||!data.stock)return;
+    // Ne pas écraser si c'est notre propre push
+    if(data.date===_gistLastRemoteDate)return;
+    // Vérifier si les données distantes sont plus récentes
+    if(_gistLastRemoteDate&&new Date(data.date)<=new Date(_gistLastRemoteDate))return;
+    _gistLastRemoteDate=data.date;
+    CATS=data.cats;stock=data.stock;
+    var _orig2=localStorage.setItem.bind(localStorage);
+    if(data.layout){lieuLayout=data.layout;_orig2(KEY_LAYOUT,JSON.stringify(lieuLayout));}
+    if(data.lieux&&data.lieux.length){LIEUX=data.lieux;_orig2(KEY_LIEUX,JSON.stringify(LIEUX));}
+    if(data.history&&data.history.length){inventoryHistory=data.history;_orig2(KEY_HISTORY,JSON.stringify(inventoryHistory));}
+    _orig2(KEY_CATS,JSON.stringify(CATS));
+    _orig2(KEY_STOCK,JSON.stringify(stock));
+    renderAll();
+    if(!silent)showToast("🔄 Données mises à jour depuis un autre appareil");
+    updateSyncBadge('ok');
+  }catch(e){}
+}
+
 function saveGistSettings(){
   var t=document.getElementById('gist-token-input');
   var g=document.getElementById('gist-id-input');
-  if(t&&t.value.trim())localStorage.setItem(KEY_GIST_TOKEN,t.value.trim());
-  if(g&&g.value.trim())localStorage.setItem(KEY_GIST_ID,g.value.trim());
+  var _orig=localStorage.setItem.bind(localStorage);
+  if(t&&t.value.trim())_orig(KEY_GIST_TOKEN,t.value.trim());
+  if(g&&g.value.trim())_orig(KEY_GIST_ID,g.value.trim());
 }
 
 async function gistSave(){
@@ -2056,22 +2127,9 @@ async function gistSave(){
   var token=localStorage.getItem(KEY_GIST_TOKEN);
   if(!token){showToast("❌ Token GitHub requis");return;}
   var gistId=localStorage.getItem(KEY_GIST_ID);
-  var data={version:4,date:new Date().toISOString(),shop:"LE GLOBE",cats:CATS,stock:stock,layout:lieuLayout,lieux:LIEUX,history:inventoryHistory};
-  var body={description:"LE GLOBE – Inventaire Boissons",public:false,files:{"globe_inventaire.json":{content:JSON.stringify(data,null,2)}}};
-  try{
-    showToast("⏳ Sauvegarde en cours...");
-    var url=gistId?"https://api.github.com/gists/"+gistId:"https://api.github.com/gists";
-    var method=gistId?"PATCH":"POST";
-    var resp=await fetch(url,{method:method,headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify(body)});
-    if(!resp.ok){showToast("❌ Erreur GitHub: "+resp.status);return;}
-    var json=await resp.json();
-    if(!gistId){
-      localStorage.setItem(KEY_GIST_ID,json.id);
-      var gi=document.getElementById('gist-id-input');
-      if(gi)gi.value=json.id;
-    }
-    showToast("☁️ Sauvegardé sur GitHub Gist !");
-  }catch(e){showToast("❌ Erreur réseau");}
+  if(!gistId){showToast("❌ Gist ID requis");return;}
+  await gistPush();
+  showToast("☁️ Synchronisé !");
 }
 
 async function gistLoad(){
@@ -2079,26 +2137,31 @@ async function gistLoad(){
   var token=localStorage.getItem(KEY_GIST_TOKEN);
   var gistId=localStorage.getItem(KEY_GIST_ID);
   if(!token||!gistId){showToast("❌ Token et Gist ID requis");return;}
-  try{
-    showToast("⏳ Chargement...");
-    var resp=await fetch("https://api.github.com/gists/"+gistId,{headers:{"Authorization":"Bearer "+token}});
-    if(!resp.ok){showToast("❌ Erreur GitHub: "+resp.status);return;}
-    var json=await resp.json();
-    var fc=json.files["globe_inventaire.json"];
-    if(!fc){showToast("❌ Fichier non trouvé dans le Gist");return;}
-    var data=JSON.parse(fc.content);
-    if(!data.cats||!data.stock){showToast("❌ Données invalides");return;}
-    if(!confirm("Charger la sauvegarde du "+data.date.split("T")[0]+" ?\nToutes les données actuelles seront remplacées.")){return;}
-    CATS=data.cats;stock=data.stock;
-    if(data.layout){lieuLayout=data.layout;localStorage.setItem(KEY_LAYOUT,JSON.stringify(lieuLayout));}
-    if(data.lieux&&data.lieux.length){LIEUX=data.lieux;localStorage.setItem(KEY_LIEUX,JSON.stringify(LIEUX));}
-    if(data.history&&data.history.length){inventoryHistory=data.history;localStorage.setItem(KEY_HISTORY,JSON.stringify(inventoryHistory));}
-    saveCatsToStorage();
-    localStorage.setItem(KEY_STOCK,JSON.stringify(stock));
-    renderAll();
-    showToast("✅ Données chargées depuis GitHub Gist !");
-  }catch(e){showToast("❌ Erreur réseau");}
+  _gistLastRemoteDate=null;
+  await gistPull(false);
+  showToast("✅ Données chargées !");
 }
+
+function updateSyncBadge(state){
+  var b=document.getElementById('sync-badge');
+  if(!b)return;
+  if(state==='ok'){b.textContent='☁️';b.title='Synchronisé';}
+  else if(state==='syncing'){b.textContent='🔄';b.title='Sync en cours...';}
+  else if(state==='pending'){b.textContent='⏳';b.title='Sync dans 5s...';}
+  else{b.textContent='⚠️';b.title='Erreur de sync';}
+}
+
+// Pull au démarrage + poll toutes les 2 minutes
+window.addEventListener('load',function(){
+  var token=localStorage.getItem(KEY_GIST_TOKEN);
+  var gistId=localStorage.getItem(KEY_GIST_ID);
+  if(token&&gistId){
+    var b=document.getElementById('sync-badge');
+    if(b){b.style.display='inline';b.textContent='☁️';}
+    setTimeout(function(){gistPull(true);},1500);
+    setInterval(function(){gistPull(true);},120000);
+  }
+});
 
 /* ============================================================
    DÉMARRAGE
