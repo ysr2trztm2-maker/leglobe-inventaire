@@ -437,6 +437,8 @@ var alertMode=false;
 var lightMode=localStorage.getItem('globe_theme')==='light';
 var KEY_HISTORY="globe_history_v1";
 var KEY_LAYOUT="globe_layout_v1";
+var KEY_GIST_TOKEN="globe_gist_token";
+var KEY_GIST_ID="globe_gist_id";
 var lieuMode=false;
 var lieuLayout={};  // {lieu_id: [{catId, prodIdx, excluded},...]}
 var inventoryHistory=[];
@@ -879,6 +881,17 @@ function renderSettings(){
   h+='<div style="color:#f87171;font-size:11px;margin-top:6px">⚠️ Remplace toutes les données actuelles</div>';
   h+='</div>';
   h+='</div>';
+
+  // Section GitHub Gist
+  h+='<div class="s-section" style="margin-bottom:16px">';
+  h+='<div class="s-section-title">☁️ Sync GitHub Gist</div>';
+  h+='<div style="background:#0f172a;border-radius:10px;padding:12px">';
+  h+='<div style="color:#94a3b8;font-size:12px;margin-bottom:10px">Synchronise tes données entre tous tes appareils.</div>';
+  h+='<input id="gist-token-input" type="password" placeholder="Token GitHub" value="'+(localStorage.getItem(KEY_GIST_TOKEN)||'')+'" class="form-input" style="width:100%;margin-bottom:8px;background:#0a1628;border:1px solid #1e2d45;color:#f1f5f9;border-radius:8px;padding:10px;font-size:14px" />';
+  h+='<input id="gist-id-input" type="text" placeholder="Gist ID (auto après 1ère sync)" value="'+(localStorage.getItem(KEY_GIST_ID)||'')+'" class="form-input" style="width:100%;margin-bottom:10px;background:#0a1628;border:1px solid #1e2d45;color:#f1f5f9;border-radius:8px;padding:10px;font-size:14px" />';
+  h+='<button class="add-btn" style="background:#238636;color:#fff;border:none;margin-bottom:6px;font-size:15px;padding:14px" onclick="gistSave()">☁️ Sauvegarder sur Gist</button>';
+  h+='<button class="add-btn" style="background:#1e2d45;color:#cbd5e1;border:1px solid #334155;font-size:15px;padding:14px" onclick="gistLoad()">⬇️ Charger depuis Gist</button>';
+  h+='</div></div>';
 
   // Section Historique
   h+='<div class="s-section" style="margin-bottom:16px">';
@@ -2026,6 +2039,65 @@ function toggleTheme(){
   lightMode=!lightMode;
   localStorage.setItem('globe_theme',lightMode?'light':'dark');
   applyTheme();
+}
+
+/* ============================================================
+   GITHUB GIST SYNC
+============================================================ */
+function saveGistSettings(){
+  var t=document.getElementById('gist-token-input');
+  var g=document.getElementById('gist-id-input');
+  if(t&&t.value.trim())localStorage.setItem(KEY_GIST_TOKEN,t.value.trim());
+  if(g&&g.value.trim())localStorage.setItem(KEY_GIST_ID,g.value.trim());
+}
+
+async function gistSave(){
+  saveGistSettings();
+  var token=localStorage.getItem(KEY_GIST_TOKEN);
+  if(!token){showToast("❌ Token GitHub requis");return;}
+  var gistId=localStorage.getItem(KEY_GIST_ID);
+  var data={version:4,date:new Date().toISOString(),shop:"LE GLOBE",cats:CATS,stock:stock,layout:lieuLayout,lieux:LIEUX,history:inventoryHistory};
+  var body={description:"LE GLOBE – Inventaire Boissons",public:false,files:{"globe_inventaire.json":{content:JSON.stringify(data,null,2)}}};
+  try{
+    showToast("⏳ Sauvegarde en cours...");
+    var url=gistId?"https://api.github.com/gists/"+gistId:"https://api.github.com/gists";
+    var method=gistId?"PATCH":"POST";
+    var resp=await fetch(url,{method:method,headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify(body)});
+    if(!resp.ok){showToast("❌ Erreur GitHub: "+resp.status);return;}
+    var json=await resp.json();
+    if(!gistId){
+      localStorage.setItem(KEY_GIST_ID,json.id);
+      var gi=document.getElementById('gist-id-input');
+      if(gi)gi.value=json.id;
+    }
+    showToast("☁️ Sauvegardé sur GitHub Gist !");
+  }catch(e){showToast("❌ Erreur réseau");}
+}
+
+async function gistLoad(){
+  saveGistSettings();
+  var token=localStorage.getItem(KEY_GIST_TOKEN);
+  var gistId=localStorage.getItem(KEY_GIST_ID);
+  if(!token||!gistId){showToast("❌ Token et Gist ID requis");return;}
+  try{
+    showToast("⏳ Chargement...");
+    var resp=await fetch("https://api.github.com/gists/"+gistId,{headers:{"Authorization":"Bearer "+token}});
+    if(!resp.ok){showToast("❌ Erreur GitHub: "+resp.status);return;}
+    var json=await resp.json();
+    var fc=json.files["globe_inventaire.json"];
+    if(!fc){showToast("❌ Fichier non trouvé dans le Gist");return;}
+    var data=JSON.parse(fc.content);
+    if(!data.cats||!data.stock){showToast("❌ Données invalides");return;}
+    if(!confirm("Charger la sauvegarde du "+data.date.split("T")[0]+" ?\nToutes les données actuelles seront remplacées.")){return;}
+    CATS=data.cats;stock=data.stock;
+    if(data.layout){lieuLayout=data.layout;localStorage.setItem(KEY_LAYOUT,JSON.stringify(lieuLayout));}
+    if(data.lieux&&data.lieux.length){LIEUX=data.lieux;localStorage.setItem(KEY_LIEUX,JSON.stringify(LIEUX));}
+    if(data.history&&data.history.length){inventoryHistory=data.history;localStorage.setItem(KEY_HISTORY,JSON.stringify(inventoryHistory));}
+    saveCatsToStorage();
+    localStorage.setItem(KEY_STOCK,JSON.stringify(stock));
+    renderAll();
+    showToast("✅ Données chargées depuis GitHub Gist !");
+  }catch(e){showToast("❌ Erreur réseau");}
 }
 
 /* ============================================================
