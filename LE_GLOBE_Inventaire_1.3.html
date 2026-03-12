@@ -554,6 +554,28 @@ window.addEventListener('popstate',function(e){
 history.replaceState({page:'inv'},'','#');
 
 /* ============================================================
+   SAISIE RAPIDE — Entrée passe au champ suivant
+============================================================ */
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Enter'&&e.key!=='Tab')return;
+  var t=e.target;
+  if(!t||!t.classList.contains('inp'))return;
+  e.preventDefault();
+  var all=Array.from(document.querySelectorAll('.inp:not([disabled])'));
+  var idx=all.indexOf(t);
+  if(idx===-1)return;
+  var next=all[idx+1];
+  if(next){
+    next.focus();
+    next.select();
+    // Scroll pour que le champ suivant soit visible
+    next.closest('.card')&&next.closest('.card').scrollIntoView({block:'nearest',behavior:'smooth'});
+  } else {
+    t.blur(); // dernier champ : ferme le clavier
+  }
+});
+
+/* ============================================================
    INVENTAIRE — RENDER
 ============================================================ */
 function doSave(){
