@@ -882,8 +882,8 @@ function renderInv(){
     h+='<div class="prod-info"><div class="pname">'+p.n+'</div><div class="pmeta">'+p.pp+'/carton · seuil:'+(s.sl||p.sl||p.pp)+(s.pv>0?' · réf:'+s.pv:'')+'</div></div>';
     h+='</div><span class="sbadge '+sbc+'" id="sb_'+k+'">'+sbl+'</span></div>';
     h+='<div class="cinputs">';
-    h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">Unités</div><input class="inp '+l.ic+'" type="number" min="0" inputmode="numeric" value="'+lx.u+'" placeholder="0" oninput="updLieu(\''+k+'\',\'u\',this.value)"></div>';
-    h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">📦 Cartons</div><input class="inp '+l.ic+'" type="number" min="0" inputmode="numeric" value="'+lx.p+'" placeholder="0" oninput="updLieu(\''+k+'\',\'p\',this.value)"></div>';
+    h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">Unités</div><input class="inp '+l.ic+'" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.u+'" placeholder="0" oninput="updLieu(\''+k+'\',\'u\',this.value)"></div>';
+    h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">📦 Cartons</div><input class="inp '+l.ic+'" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.p+'" placeholder="0" oninput="updLieu(\''+k+'\',\'p\',this.value)"></div>';
     h+='</div>';
     var pp=getProdByKey(k).pp||1;
     var ctn=hasVal(k)?Math.floor(t/pp):0;
@@ -1659,9 +1659,9 @@ function renderLieuMode(){
       h+='</div>';
       h+='<div class="cinputs">';
       h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">Unités</div>';
-      h+='<input class="inp '+l.ic+'" type="number" min="0" inputmode="numeric" value="'+lx.u+'" placeholder="0" oninput="updLieu(\''+k+'\',\'u\',this.value)"></div>';
+      h+='<input class="inp '+l.ic+'" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.u+'" placeholder="0" oninput="updLieu(\''+k+'\',\'u\',this.value)"></div>';
       h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">📦 Cartons</div>';
-      h+='<input class="inp '+l.ic+'" type="number" min="0" inputmode="numeric" value="'+lx.p+'" placeholder="0" oninput="updLieu(\''+k+'\',\'p\',this.value)"></div>';
+      h+='<input class="inp '+l.ic+'" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.p+'" placeholder="0" oninput="updLieu(\''+k+'\',\'p\',this.value)"></div>';
       h+='</div>';
       var lmctn=t>0?Math.floor(t/lmpp):0,lmrem=t>0?t%lmpp:0;
       var lmctnStr=t>0?(lmctn>0&&lmrem>0?(lmctn+'ctn+'+lmrem+'u'):(lmctn>0?(lmctn+'ctn'):(lmrem+'u'))):'';
@@ -1718,8 +1718,8 @@ function renderAlert(){
     h+='<div class="pmeta">'+a.cat.icon+' '+a.cat.label+' · seuil:'+(stock[a.k]&&stock[a.k].sl||a.p.sl||a.p.pp)+'</div></div>';
     h+='</div><span class="sbadge '+(isE?'s-e':'s-w')+'">'+(isE?'❌ Rupture':'⚠️ Faible')+'</span></div>';
     h+='<div class="cinputs">';
-    h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">Unités</div><input class="inp '+l.ic+'" type="number" min="0" inputmode="numeric" value="'+lx.u+'" placeholder="0" oninput="updLieu(\''+a.k+'\',\'u\',this.value)"></div>';
-    h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">📦 Cartons</div><input class="inp '+l.ic+'" type="number" min="0" inputmode="numeric" value="'+lx.p+'" placeholder="0" oninput="updLieu(\''+a.k+'\',\'p\',this.value)"></div>';
+    h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">Unités</div><input class="inp '+l.ic+'" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.u+'" placeholder="0" oninput="updLieu(\''+a.k+'\',\'u\',this.value)"></div>';
+    h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">📦 Cartons</div><input class="inp '+l.ic+'" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.p+'" placeholder="0" oninput="updLieu(\''+a.k+'\',\'p\',this.value)"></div>';
     h+='</div>';
     h+='<div class="ctot"><div class="ctot-row"><span class="tlbl">TOTAL CUMULÉ</span>';
     h+='<span class="tval" style="color:'+tc+'" id="tv_'+a.k+'">'+(hasVal(a.k)?a.t:'—')+'</span></div>';
@@ -1868,8 +1868,8 @@ function renderSearch(){
       h+='<div class="prod-info"><div class="pname">'+p.n+'</div><div class="pmeta">'+p.pp+'/carton · seuil:'+(s.sl||p.sl||p.pp)+'</div></div>';
       h+='</div><span class="sbadge '+sbc+'">'+sbl+'</span></div>';
       h+='<div class="cinputs">';
-      h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">Unités</div><input class="inp '+l.ic+'" type="number" min="0" inputmode="numeric" value="'+lx.u+'" placeholder="0" oninput="updLieu(\''+k+'\',\'u\',this.value)"></div>';
-      h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">📦 Cartons</div><input class="inp '+l.ic+'" type="number" min="0" inputmode="numeric" value="'+lx.p+'" placeholder="0" oninput="updLieu(\''+k+'\',\'p\',this.value)"></div>';
+      h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">Unités</div><input class="inp '+l.ic+'" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.u+'" placeholder="0" oninput="updLieu(\''+k+'\',\'u\',this.value)"></div>';
+      h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">📦 Cartons</div><input class="inp '+l.ic+'" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.p+'" placeholder="0" oninput="updLieu(\''+k+'\',\'p\',this.value)"></div>';
       h+='</div>';
       h+='<div class="ctot"><div class="ctot-row"><span class="tlbl">TOTAL CUMULÉ</span>';
       h+='<span class="tval" style="color:'+tc+'" id="tv_'+k+'">'+(hasVal(k)?t:"—")+'</span></div>';
@@ -1930,8 +1930,8 @@ function renderQuick(){
       h+='<div class="ctot-detail" id="qdtail_'+k+'" style="margin-top:4px">'+dh+'</div>';
       h+='</div>';
       h+='<div style="display:flex;gap:6px;flex-shrink:0">';
-      h+='<input class="inp '+l.ic+' inp-quick" type="number" min="0" inputmode="numeric" value="'+lx.u+'" placeholder="U" oninput="updLieu(\''+k+'\',\'u\',this.value)">';
-      h+='<input class="inp '+l.ic+' inp-quick" type="number" min="0" inputmode="numeric" value="'+lx.p+'" placeholder="📦" oninput="updLieu(\''+k+'\',\'p\',this.value)">';
+      h+='<input class="inp '+l.ic+' inp-quick" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.u+'" placeholder="U" oninput="updLieu(\''+k+'\',\'u\',this.value)">';
+      h+='<input class="inp '+l.ic+' inp-quick" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.p+'" placeholder="📦" oninput="updLieu(\''+k+'\',\'p\',this.value)">';
       h+='</div>';
       h+='</div>';
     });
