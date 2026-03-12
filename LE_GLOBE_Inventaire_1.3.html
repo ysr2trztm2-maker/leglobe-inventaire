@@ -609,12 +609,29 @@ function switchLieu(lid){
   showToast('📍 '+getLieu(lid).label);
 }
 
+var _audioCtx=null;
+function beepSaisie(){
+  try{
+    if(!_audioCtx)_audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    var o=_audioCtx.createOscillator();
+    var g=_audioCtx.createGain();
+    o.connect(g);g.connect(_audioCtx.destination);
+    o.frequency.value=880;
+    o.type='sine';
+    g.gain.setValueAtTime(0.15,_audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,_audioCtx.currentTime+0.08);
+    o.start(_audioCtx.currentTime);
+    o.stop(_audioCtx.currentTime+0.08);
+  }catch(e){}
+}
+
 function updLieu(k,field,val){
   if(!stock[k])return;
   if(!stock[k].lieux[curLieu])stock[k].lieux[curLieu]={u:"",p:""};
   stock[k].lieux[curLieu][field]=val;
   refreshCard(k);renderStats();renderTabs();
   scheduleDraftSave();
+  beepSaisie();
 }
 
 function scheduleDraftSave(){
