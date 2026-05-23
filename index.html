@@ -678,6 +678,7 @@ function doSave(){
       a.href="data:application/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(bkp,null,2));
       a.download=fname;
       document.body.appendChild(a);a.click();a.remove();
+      setTimeout(function(){showToast('📂 Enregistrer dans : iCloud > LeGlobe > Boissons > Sauvegarde JSON');},600);
     }catch(e){}
   }catch(e){alert("Erreur sauvegarde");}
 }
