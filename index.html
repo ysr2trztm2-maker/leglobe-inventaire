@@ -1041,6 +1041,10 @@ function renderSettings(){
   h+='<input id="gist-id-input" type="text" placeholder="Gist ID (auto après 1ère sync)" value="'+(localStorage.getItem(KEY_GIST_ID)||'')+'" class="form-input" style="width:100%;margin-bottom:10px;background:#0a1628;border:1px solid #1e2d45;color:#f1f5f9;border-radius:8px;padding:10px;font-size:14px" />';
   h+='<button class="add-btn" style="background:#238636;color:#fff;border:none;margin-bottom:6px;font-size:15px;padding:14px" onclick="gistSave()">☁️ Sauvegarder sur Gist</button>';
   h+='<button class="add-btn" style="background:#1e2d45;color:#cbd5e1;border:1px solid #334155;font-size:15px;padding:14px" onclick="gistLoad()">⬇️ Charger depuis Gist</button>';
+  h+='<div id="gist-sync-status">';
+  if(_gistLastError){h+='<div style="color:#f87171;font-size:12px;margin-top:8px;padding:8px;background:#2d1515;border-radius:6px">⚠️ '+_gistLastError+'</div>';}
+  else if(_gistLastSuccess){var _sd=new Date(_gistLastSuccess);h+='<div style="color:#4ade80;font-size:12px;margin-top:8px">✅ Synchronisé le '+_sd.toLocaleDateString('fr-FR')+' à '+_sd.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+'</div>';}
+  h+='</div>';
   h+='</div></div>';
 
   // Section Historique
@@ -2197,6 +2201,9 @@ function toggleTheme(){
 var _gistPushTimer=null;
 var _gistPushing=false;
 var _gistLastRemoteDate=null;
+var _gistLastError=null;
+var _gistLastSuccess=null;
+var _gistRetryTimer=null;
 var _gistIgnoreKeys=new Set([KEY_GIST_TOKEN,KEY_GIST_ID,'globe_theme']);
 
 // Intercepter localStorage.setItem pour déclencher l'auto-sync
@@ -2222,14 +2229,36 @@ async function gistPush(){
   var token=localStorage.getItem(KEY_GIST_TOKEN);
   var gistId=localStorage.getItem(KEY_GIST_ID);
   if(!token||!gistId)return;
+  clearTimeout(_gistRetryTimer);
   _gistPushing=true;
   updateSyncBadge('syncing');
   var data={version:4,date:new Date().toISOString(),shop:"LE GLOBE",cats:CATS,stock:stock,layout:lieuLayout,lieux:LIEUX,history:inventoryHistory};
   try{
     var resp=await fetch("https://api.github.com/gists/"+gistId,{method:"PATCH",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({files:{"globe_inventaire.json":{content:JSON.stringify(data,null,2)}}})});
-    if(resp.ok){_gistLastRemoteDate=data.date;updateSyncBadge('ok');}
-    else{updateSyncBadge('err');}
-  }catch(e){updateSyncBadge('err');}
+    if(resp.ok){
+      _gistLastRemoteDate=data.date;
+      _gistLastSuccess=new Date().toISOString();
+      _gistLastError=null;
+      updateSyncBadge('ok');
+      updateSyncStatus();
+    } else {
+      var msg=resp.status===401?'Token expiré — renouvelle ton token GitHub':
+              resp.status===403?'Accès refusé — vérifie les permissions du token':
+              resp.status===404?'Gist introuvable — vérifie le Gist ID':
+              'Erreur sync ('+resp.status+')';
+      _gistLastError=msg;
+      updateSyncBadge('err');
+      showToast('❌ '+msg);
+      updateSyncStatus();
+      if(resp.status!==401&&resp.status!==403)_gistRetryTimer=setTimeout(gistPush,30000);
+    }
+  }catch(e){
+    _gistLastError='Erreur réseau — vérifie ta connexion';
+    updateSyncBadge('err');
+    showToast('❌ '+_gistLastError);
+    updateSyncStatus();
+    _gistRetryTimer=setTimeout(gistPush,30000);
+  }
   _gistPushing=false;
 }
 
@@ -2239,15 +2268,24 @@ async function gistPull(silent){
   if(!token||!gistId)return;
   try{
     var resp=await fetch("https://api.github.com/gists/"+gistId,{headers:{"Authorization":"Bearer "+token}});
-    if(!resp.ok)return;
+    if(!resp.ok){
+      if(!silent){
+        var msg=resp.status===401?'Token expiré — renouvelle ton token GitHub':
+                resp.status===404?'Gist introuvable — vérifie le Gist ID':
+                'Erreur sync ('+resp.status+')';
+        _gistLastError=msg;
+        updateSyncBadge('err');
+        showToast('❌ '+msg);
+        updateSyncStatus();
+      }
+      return;
+    }
     var json=await resp.json();
     var fc=json.files["globe_inventaire.json"];
     if(!fc)return;
     var data=JSON.parse(fc.content);
     if(!data.cats||!data.stock)return;
-    // Ne pas écraser si c'est notre propre push
     if(data.date===_gistLastRemoteDate)return;
-    // Vérifier si les données distantes sont plus récentes
     if(_gistLastRemoteDate&&new Date(data.date)<=new Date(_gistLastRemoteDate))return;
     _gistLastRemoteDate=data.date;
     CATS=data.cats;stock=data.stock;
@@ -2260,7 +2298,14 @@ async function gistPull(silent){
     renderAll();
     if(!silent)showToast("🔄 Données mises à jour depuis un autre appareil");
     updateSyncBadge('ok');
-  }catch(e){}
+  }catch(e){
+    if(!silent){
+      _gistLastError='Erreur réseau — vérifie ta connexion';
+      updateSyncBadge('err');
+      showToast('❌ '+_gistLastError);
+      updateSyncStatus();
+    }
+  }
 }
 
 function saveGistSettings(){
@@ -2294,10 +2339,25 @@ async function gistLoad(){
 function updateSyncBadge(state){
   var b=document.getElementById('sync-badge');
   if(!b)return;
+  b.style.display='inline';
   if(state==='ok'){b.textContent='☁️';b.title='Synchronisé';}
   else if(state==='syncing'){b.textContent='🔄';b.title='Sync en cours...';}
   else if(state==='pending'){b.textContent='⏳';b.title='Sync dans 5s...';}
-  else{b.textContent='⚠️';b.title='Erreur de sync';}
+  else{b.textContent='⚠️';b.title='Erreur de sync — ouvre les paramètres';}
+}
+
+function updateSyncStatus(){
+  var el=document.getElementById('gist-sync-status');
+  if(!el)return;
+  if(_gistLastError){
+    el.innerHTML='<div style="color:#f87171;font-size:12px;margin-top:8px;padding:8px;background:#2d1515;border-radius:6px">⚠️ '+_gistLastError+'</div>';
+  } else if(_gistLastSuccess){
+    var d=new Date(_gistLastSuccess);
+    var ds=d.toLocaleDateString('fr-FR')+' à '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    el.innerHTML='<div style="color:#4ade80;font-size:12px;margin-top:8px">✅ Synchronisé le '+ds+'</div>';
+  } else {
+    el.innerHTML='';
+  }
 }
 
 // Pull au démarrage + poll toutes les 2 minutes
