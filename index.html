@@ -664,6 +664,21 @@ function doSave(){
     // date affichée dans dashboard
     renderAll();
     showToast("✅ Inventaire sauvegardé dans l'historique");
+    // Sauvegarde automatique JSON
+    try{
+      var ts=new Date();
+      var dd=String(ts.getDate()).padStart(2,'0');
+      var mm=String(ts.getMonth()+1).padStart(2,'0');
+      var yy=ts.getFullYear();
+      var hh=String(ts.getHours()).padStart(2,'0');
+      var mn=String(ts.getMinutes()).padStart(2,'0');
+      var fname="GLOBE_"+yy+"-"+mm+"-"+dd+"_"+hh+"h"+mn+".json";
+      var bkp={version:4,date:ts.toISOString(),shop:"LE GLOBE",cats:CATS,stock:stock,layout:lieuLayout,lieux:LIEUX,history:inventoryHistory};
+      var a=document.createElement("a");
+      a.href="data:application/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(bkp,null,2));
+      a.download=fname;
+      document.body.appendChild(a);a.click();a.remove();
+    }catch(e){}
   }catch(e){alert("Erreur sauvegarde");}
 }
 
