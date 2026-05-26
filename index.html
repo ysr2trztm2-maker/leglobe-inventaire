@@ -269,7 +269,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
       <div class="hbtns">
         <button class="settingsbtn" onclick="toggleTheme()" id="themebtn">☀️</button>
         <button class="settingsbtn" onclick="goSettings()">⚙️</button>
-        <span id="sync-badge" title="Sync Gist" style="font-size:16px;cursor:default;display:none"></span>
+        <button class="settingsbtn" id="sync-badge" onclick="syncNow()" title="Synchroniser" style="display:none">☁️</button>
         <button class="savebtn" id="sbtn" onclick="doSaveWithConfirm()">✅ Valider l'inventaire</button>
         <button class="settingsbtn" id="undobtn" onclick="undoLastSave()" title="Annuler la dernière validation">↩️</button>
       </div>
@@ -2372,11 +2372,21 @@ async function gistLoad(){
 function updateSyncBadge(state){
   var b=document.getElementById('sync-badge');
   if(!b)return;
-  b.style.display='inline';
-  if(state==='ok'){b.textContent='☁️';b.title='Synchronisé';}
+  b.style.display='inline-flex';
+  b.style.opacity='1';
+  if(state==='ok'){b.textContent='☁️';b.title='Synchronisé — appuie pour forcer la sync';b.style.opacity='0.7';}
   else if(state==='syncing'){b.textContent='🔄';b.title='Sync en cours...';}
-  else if(state==='pending'){b.textContent='⏳';b.title='Sync dans 5s...';}
-  else{b.textContent='⚠️';b.title='Erreur de sync — ouvre les paramètres';}
+  else if(state==='pending'){b.textContent='⏳';b.title='Sync dans 5s — appuie pour forcer';}
+  else{b.textContent='⚠️';b.title='Erreur de sync — appuie pour réessayer';b.style.background='rgba(239,68,68,0.2)';}
+}
+
+async function syncNow(){
+  var token=localStorage.getItem(KEY_GIST_TOKEN);
+  var gistId=localStorage.getItem(KEY_GIST_ID);
+  if(!token||!gistId){showToast('❌ Configure le Gist dans les Paramètres');return;}
+  clearTimeout(_gistPushTimer);
+  await gistPush();
+  if(!_gistLastError)showToast('☁️ Synchronisé !');
 }
 
 function updateSyncStatus(){
@@ -2399,7 +2409,7 @@ window.addEventListener('load',function(){
   var gistId=localStorage.getItem(KEY_GIST_ID);
   if(token&&gistId){
     var b=document.getElementById('sync-badge');
-    if(b){b.style.display='inline';b.textContent='☁️';}
+    if(b){b.style.display='inline-flex';b.textContent='☁️';b.style.opacity='0.7';}
     setTimeout(function(){gistPull(true);},1500);
     setInterval(function(){gistPull(true);},120000);
   }
