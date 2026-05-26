@@ -903,7 +903,7 @@ function renderStats(){
   db+='<div class="db-row"><span class="db-item">📋 '+saisi+'/'+total+' produits ('+pct+'%)</span></div>';
   db+='<div class="db-progress-bar"><div class="db-progress-fill" style="width:'+pct+'%"></div></div>';
   dbEl.innerHTML=db;
-  // bouton undo toujours visible
+  updateSyncTimeLive();
 }
 
 
