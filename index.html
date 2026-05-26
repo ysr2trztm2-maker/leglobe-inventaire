@@ -279,7 +279,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
       </div>
     </div>
     <div id="stats"><span class="pill p-n">Aucune saisie</span></div>
-    <div id="sync-info" style="display:none;font-size:12px;color:#4ade80;padding:2px 0 0 2px;letter-spacing:0.2px"></div>
+    <div id="sync-info" style="display:none;background:#052e16;border:2px solid #16a34a;border-radius:10px;margin-top:6px;padding:10px 14px;font-size:15px;font-weight:700;color:#4ade80;text-align:center;letter-spacing:0.3px"></div>
     <div id="dashboard-bar" style="margin-top:6px"></div>
   </header>
   <div class="lieu-selector">
@@ -2473,7 +2473,12 @@ window.addEventListener('load',function(){
   var gistId=localStorage.getItem(KEY_GIST_ID);
   if(token&&gistId){
     var b=document.getElementById('sync-badge');
-    if(b){b.style.display='inline-flex';updateSyncBadge('ok');}
+    if(b){
+      b.style.display='inline-flex';
+      var si=document.getElementById('sync-info');
+      if(si){si.style.display='block';si.textContent='☁️ Connexion au Gist...';}
+      updateSyncBadge('ok');
+    }
     setTimeout(function(){gistPull(true);},1500);
     setInterval(function(){gistPull(true);},120000);
   }
