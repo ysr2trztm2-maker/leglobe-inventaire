@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>LE GLOBE Inventaire</title>
 <style>html,body{background:#0a0f1e !important}
-#sync-badge.spinning{animation:spin 0.8s linear infinite;}
+#sync-badge.spinning #sync-icon{display:inline-block;animation:spin 0.8s linear infinite;}
 @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
 #sync-badge{transition:background 0.3s,opacity 0.3s;}
 </style>
@@ -2325,6 +2325,7 @@ async function gistPull(silent){
     if(data.date===_gistLastRemoteDate)return;
     if(_gistLastRemoteDate&&new Date(data.date)<=new Date(_gistLastRemoteDate))return;
     _gistLastRemoteDate=data.date;
+    _gistLastSuccess=new Date().toISOString();
     CATS=data.cats;stock=data.stock;
     var _orig2=localStorage.setItem.bind(localStorage);
     if(data.layout){lieuLayout=data.layout;_orig2(KEY_LAYOUT,JSON.stringify(lieuLayout));}
@@ -2466,7 +2467,7 @@ window.addEventListener('load',function(){
   var gistId=localStorage.getItem(KEY_GIST_ID);
   if(token&&gistId){
     var b=document.getElementById('sync-badge');
-    if(b){b.style.display='inline-flex';}
+    if(b){b.style.display='inline-flex';updateSyncBadge('ok');}
     setTimeout(function(){gistPull(true);},1500);
     setInterval(function(){gistPull(true);},120000);
   }
