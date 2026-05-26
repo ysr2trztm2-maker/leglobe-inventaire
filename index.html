@@ -273,7 +273,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
       <div class="hbtns">
         <button class="settingsbtn" onclick="toggleTheme()" id="themebtn">☀️</button>
         <button class="settingsbtn" onclick="goSettings()">⚙️</button>
-        <button id="sync-badge" onclick="syncNow()" title="Synchroniser" style="display:none;background:#0ea5e9;color:#fff;border:none;border-radius:10px;padding:8px 16px;font-size:14px;font-weight:700;cursor:pointer;-webkit-appearance:none;letter-spacing:0.3px">☁️ Sync</button>
+        <button id="sync-badge" onclick="syncNow()" title="Synchroniser" style="display:none;background:#0ea5e9;color:#fff;border:none;border-radius:10px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;-webkit-appearance:none;flex-direction:column;align-items:center;line-height:1.2;gap:1px"><span id="sync-icon">☁️ Sync</span><span id="sync-time" style="font-size:9px;font-weight:400;opacity:0.85;letter-spacing:0.2px"></span></button>
         <button class="savebtn" id="sbtn" onclick="doSaveWithConfirm()">✅ Valider l'inventaire</button>
         <button class="settingsbtn" id="undobtn" onclick="undoLastSave()" title="Annuler la dernière validation">↩️</button>
       </div>
@@ -2373,18 +2373,64 @@ async function gistLoad(){
   showToast("✅ Données chargées !");
 }
 
+var _syncTimeInterval=null;
+
+function formatTimeAgo(isoDate){
+  if(!isoDate)return'';
+  var sec=Math.floor((Date.now()-new Date(isoDate).getTime())/1000);
+  if(sec<5)return'à l'instant';
+  if(sec<60)return'il y a '+sec+'s';
+  if(sec<3600)return'il y a '+Math.floor(sec/60)+'min '+String(sec%60).padStart(2,'0')+'s';
+  return'il y a '+Math.floor(sec/3600)+'h '+Math.floor((sec%3600)/60)+'min';
+}
+
+function formatExactTime(isoDate){
+  if(!isoDate)return'';
+  var d=new Date(isoDate);
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');
+}
+
+function startSyncTimeTicker(){
+  clearInterval(_syncTimeInterval);
+  _syncTimeInterval=setInterval(function(){
+    var t=document.getElementById('sync-time');
+    if(!t||!_gistLastSuccess)return;
+    t.textContent=formatExactTime(_gistLastSuccess)+' · '+formatTimeAgo(_gistLastSuccess);
+  },1000);
+}
+
 function updateSyncBadge(state){
   var b=document.getElementById('sync-badge');
   if(!b)return;
   b.style.display='inline-flex';
   b.style.opacity='1';
+  b.style.flexDirection='column';
   b.style.alignItems='center';
-  b.style.gap='4px';
   b.classList.remove('spinning');
-  if(state==='ok'){b.innerHTML='☁️ Sync';b.title='Synchronisé';b.style.background='#16a34a';b.style.opacity='0.85';}
-  else if(state==='syncing'){b.innerHTML='🔄 Sync';b.title='Sync en cours...';b.style.background='#6366f1';b.style.opacity='1';b.classList.add('spinning');}
-  else if(state==='pending'){b.innerHTML='⏳ Sync';b.title='Envoi dans 1s...';b.style.background='#f59e0b';b.style.opacity='1';}
-  else{b.innerHTML='⚠️ Sync';b.title='Erreur — appuie pour réessayer';b.style.background='#dc2626';b.style.opacity='1';}
+  var icon=document.getElementById('sync-icon');
+  var timeEl=document.getElementById('sync-time');
+  if(state==='ok'){
+    if(icon)icon.textContent='☁️ Sync';
+    if(timeEl)timeEl.textContent=_gistLastSuccess?(formatExactTime(_gistLastSuccess)+' · '+formatTimeAgo(_gistLastSuccess)):'';
+    b.title='Synchronisé';b.style.background='#16a34a';b.style.opacity='0.9';
+    startSyncTimeTicker();
+  } else if(state==='syncing'){
+    if(icon)icon.textContent='🔄 Sync';
+    if(timeEl)timeEl.textContent='en cours...';
+    b.title='Sync en cours...';b.style.background='#6366f1';b.style.opacity='1';
+    b.classList.add('spinning');
+    clearInterval(_syncTimeInterval);
+  } else if(state==='pending'){
+    if(icon)icon.textContent='⏳ Sync';
+    if(timeEl)timeEl.textContent='envoi imminent...';
+    b.title='Envoi imminent...';b.style.background='#f59e0b';b.style.opacity='1';
+    clearInterval(_syncTimeInterval);
+  } else {
+    if(icon)icon.textContent='⚠️ Sync';
+    if(timeEl)timeEl.textContent=_gistLastError||'erreur';
+    b.title='Erreur — appuie pour réessayer';b.style.background='#dc2626';b.style.opacity='1';
+    clearInterval(_syncTimeInterval);
+  }
 }
 
 async function syncNow(){
@@ -2420,7 +2466,7 @@ window.addEventListener('load',function(){
   var gistId=localStorage.getItem(KEY_GIST_ID);
   if(token&&gistId){
     var b=document.getElementById('sync-badge');
-    if(b){b.style.display='inline-flex';b.innerHTML='☁️ Sync';b.style.opacity='0.75';}
+    if(b){b.style.display='inline-flex';}
     setTimeout(function(){gistPull(true);},1500);
     setInterval(function(){gistPull(true);},120000);
   }
