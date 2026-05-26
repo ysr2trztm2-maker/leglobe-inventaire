@@ -610,7 +610,20 @@ function inpPrev(t){
 }
 function hideInpBar(){
   var b=document.getElementById('inp-bar');
-  if(b)b.style.display='none';
+  if(b){b.style.display='none';b.style.bottom='0';}
+}
+// Repositionner la barre au-dessus du clavier iOS (visualViewport API)
+function _updateBarPos(){
+  var b=document.getElementById('inp-bar');
+  if(!b||b.style.display==='none')return;
+  if(window.visualViewport){
+    var kbH=Math.max(0,window.innerHeight-window.visualViewport.height-window.visualViewport.offsetTop);
+    b.style.bottom=kbH+'px';
+  }
+}
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize',_updateBarPos);
+  window.visualViewport.addEventListener('scroll',_updateBarPos);
 }
 // Créer la barre flottante une seule fois
 (function(){
@@ -636,6 +649,8 @@ document.addEventListener('focusin',function(e){
     var lbl=t.closest('.ig')&&t.closest('.ig').querySelector('.ilbl');
     var card=t.closest('.card')&&t.closest('.card').querySelector('.cname,.pname,b');
     document.getElementById('inp-bar-label').textContent=(card?card.textContent+' — ':'')+( lbl?lbl.textContent:'');
+    // Positionner au-dessus du clavier iOS dès l'ouverture
+    setTimeout(_updateBarPos,100);
   }
 });
 document.addEventListener('focusout',function(e){
