@@ -577,18 +577,36 @@ history.replaceState({page:'inv'},'','#');
 /* ============================================================
    SAISIE RAPIDE — Barre iOS + Entrée/Tab
 ============================================================ */
+function scrollIntoViewAboveBar(el){
+  // Scroll l'élément dans la zone visible en tenant compte de la barre fixe du bas
+  var bar=document.getElementById('inp-bar');
+  var barH=bar&&bar.offsetHeight||70;
+  var hdrH=parseInt(document.documentElement.style.getPropertyValue('--header-h'))||60;
+  var rect=el.getBoundingClientRect();
+  var viewH=window.innerHeight;
+  // Zone visible = entre hdrH (header) et viewH-barH (barre bas)
+  var visTop=hdrH+8;
+  var visBot=viewH-barH-12;
+  if(rect.top<visTop){
+    // Trop haut — remonter
+    window.scrollBy({top:rect.top-visTop,behavior:'smooth'});
+  } else if(rect.bottom>visBot){
+    // Trop bas (caché derrière la barre) — descendre
+    window.scrollBy({top:rect.bottom-visBot,behavior:'smooth'});
+  }
+}
 function inpNext(t){
   var all=Array.from(document.querySelectorAll('.inp:not([disabled])'));
   var idx=all.indexOf(t);
   if(idx===-1)return;
   var next=all[idx+1];
-  if(next){next.focus();next.select();next.closest('.card')&&next.closest('.card').scrollIntoView({block:'nearest',behavior:'smooth'});}
+  if(next){next.focus();next.select();scrollIntoViewAboveBar(next);}
   else{t.blur();hideInpBar();}
 }
 function inpPrev(t){
   var all=Array.from(document.querySelectorAll('.inp:not([disabled])'));
   var idx=all.indexOf(t);
-  if(idx>0){var p=all[idx-1];p.focus();p.select();}
+  if(idx>0){var p=all[idx-1];p.focus();p.select();scrollIntoViewAboveBar(p);}
 }
 function hideInpBar(){
   var b=document.getElementById('inp-bar');
