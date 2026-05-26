@@ -279,7 +279,6 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
       </div>
     </div>
     <div id="stats"><span class="pill p-n">Aucune saisie</span></div>
-    <div id="sync-info" style="display:none;background:#052e16;border:2px solid #16a34a;border-radius:10px;margin-top:6px;padding:10px 14px;font-size:15px;font-weight:700;color:#4ade80;text-align:center;letter-spacing:0.3px"></div>
     <div id="dashboard-bar" style="margin-top:6px"></div>
   </header>
   <div class="lieu-selector">
@@ -897,6 +896,7 @@ function renderStats(){
 
   var db='<div class="db-row">';
   db+='<span class="db-item">📆 '+dateNow+'</span>';
+  db+='<span class="db-item" id="sync-time-live" style="color:#4ade80;font-weight:700"></span>';
   db+='<span class="db-item" style="color:#334155"> · </span>';
   db+='<span class="db-item">💾 '+lastSave+'</span>';
   db+='</div>';
@@ -2380,7 +2380,7 @@ var _syncTimeInterval=null;
 function formatTimeAgo(isoDate){
   if(!isoDate)return'';
   var sec=Math.floor((Date.now()-new Date(isoDate).getTime())/1000);
-  if(sec<5)return'à l'instant';
+  if(sec<5)return'à l\'instant';
   if(sec<60)return'il y a '+sec+'s';
   if(sec<3600)return'il y a '+Math.floor(sec/60)+'min '+String(sec%60).padStart(2,'0')+'s';
   return'il y a '+Math.floor(sec/3600)+'h '+Math.floor((sec%3600)/60)+'min';
@@ -2392,14 +2392,25 @@ function formatExactTime(isoDate){
   return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');
 }
 
+function updateSyncTimeLive(){
+  var el=document.getElementById('sync-time-live');
+  if(!el)return;
+  if(_gistLastSuccess){
+    el.textContent=' ☁️ '+formatExactTime(_gistLastSuccess)+' ('+formatTimeAgo(_gistLastSuccess)+')';
+    el.style.color='#4ade80';
+  } else if(_gistLastError){
+    el.textContent=' ⚠️ Erreur sync';
+    el.style.color='#f87171';
+  } else {
+    el.textContent=' ☁️ ...';
+    el.style.color='#94a3b8';
+  }
+}
+
 function startSyncTimeTicker(){
   clearInterval(_syncTimeInterval);
-  function tick(){
-    if(!_gistLastSuccess)return;
-    setSyncInfo('☁️ Dernière sync : '+formatExactTime(_gistLastSuccess)+'  —  '+formatTimeAgo(_gistLastSuccess),'#4ade80');
-  }
-  tick();
-  _syncTimeInterval=setInterval(tick,1000);
+  updateSyncTimeLive();
+  _syncTimeInterval=setInterval(updateSyncTimeLive,1000);
 }
 
 function updateSyncBadge(state){
@@ -2413,32 +2424,26 @@ function updateSyncBadge(state){
     if(icon)icon.textContent='☁️ Sync';
     b.style.background='#16a34a';
     startSyncTimeTicker();
+    updateSyncTimeLive();
   } else if(state==='syncing'){
     if(icon)icon.textContent='🔄 Sync';
     b.style.background='#6366f1';
     b.classList.add('spinning');
     clearInterval(_syncTimeInterval);
-    setSyncInfo('🔄 Synchronisation en cours...','#94a3b8');
+    updateSyncTimeLive();
   } else if(state==='pending'){
     if(icon)icon.textContent='⏳ Sync';
     b.style.background='#f59e0b';
     clearInterval(_syncTimeInterval);
-    setSyncInfo('⏳ Envoi imminent...','#fbbf24');
+    updateSyncTimeLive();
   } else {
     if(icon)icon.textContent='⚠️ Sync';
     b.style.background='#dc2626';
     clearInterval(_syncTimeInterval);
-    setSyncInfo('⚠️ Erreur : '+(_gistLastError||'inconnue'),'#f87171');
+    updateSyncTimeLive();
   }
 }
 
-function setSyncInfo(text,color){
-  var el=document.getElementById('sync-info');
-  if(!el)return;
-  el.style.display='block';
-  el.style.color=color||'#4ade80';
-  el.textContent=text;
-}
 
 async function syncNow(){
   var token=localStorage.getItem(KEY_GIST_TOKEN);
@@ -2473,12 +2478,8 @@ window.addEventListener('load',function(){
   var gistId=localStorage.getItem(KEY_GIST_ID);
   if(token&&gistId){
     var b=document.getElementById('sync-badge');
-    if(b){
-      b.style.display='inline-flex';
-      var si=document.getElementById('sync-info');
-      if(si){si.style.display='block';si.textContent='☁️ Connexion au Gist...';}
-      updateSyncBadge('ok');
-    }
+    if(b){b.style.display='inline-flex';}
+    startSyncTimeTicker();
     setTimeout(function(){gistPull(true);},1500);
     setInterval(function(){gistPull(true);},120000);
   }
