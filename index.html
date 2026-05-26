@@ -4,7 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>LE GLOBE Inventaire</title>
-<style>html,body{background:#0a0f1e !important}</style>
+<style>html,body{background:#0a0f1e !important}
+#sync-badge.spinning{animation:spin 0.8s linear infinite;}
+@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+#sync-badge{transition:background 0.3s,opacity 0.3s;}
+</style>
 <script>if(localStorage.getItem('globe_theme')==='light'){document.documentElement.style.background='#f1f5f9';document.body&&(document.body.style.background='#f1f5f9');}</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -2253,7 +2257,7 @@ function scheduleGistPush(){
   var gistId=localStorage.getItem(KEY_GIST_ID);
   if(!token||!gistId)return;
   clearTimeout(_gistPushTimer);
-  _gistPushTimer=setTimeout(gistPush,5000);
+  _gistPushTimer=setTimeout(gistPush,800);
   updateSyncBadge('pending');
 }
 
@@ -2376,9 +2380,10 @@ function updateSyncBadge(state){
   b.style.opacity='1';
   b.style.alignItems='center';
   b.style.gap='4px';
-  if(state==='ok'){b.innerHTML='☁️ Sync';b.title='Synchronisé';b.style.background='#0ea5e9';b.style.opacity='0.75';}
-  else if(state==='syncing'){b.innerHTML='🔄 Sync...';b.title='Sync en cours...';b.style.background='#6366f1';b.style.opacity='1';}
-  else if(state==='pending'){b.innerHTML='⏳ Sync';b.title='Sync dans 5s';b.style.background='#0ea5e9';b.style.opacity='1';}
+  b.classList.remove('spinning');
+  if(state==='ok'){b.innerHTML='☁️ Sync';b.title='Synchronisé';b.style.background='#16a34a';b.style.opacity='0.85';}
+  else if(state==='syncing'){b.innerHTML='🔄 Sync';b.title='Sync en cours...';b.style.background='#6366f1';b.style.opacity='1';b.classList.add('spinning');}
+  else if(state==='pending'){b.innerHTML='⏳ Sync';b.title='Envoi dans 1s...';b.style.background='#f59e0b';b.style.opacity='1';}
   else{b.innerHTML='⚠️ Sync';b.title='Erreur — appuie pour réessayer';b.style.background='#dc2626';b.style.opacity='1';}
 }
 
