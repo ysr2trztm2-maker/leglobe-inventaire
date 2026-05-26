@@ -577,6 +577,33 @@ history.replaceState({page:'inv'},'','#');
 /* ============================================================
    SAISIE RAPIDE — Barre iOS + Entrée/Tab
 ============================================================ */
+/* ── Lecture vocale de la quantité ── */
+var _voiceEnabled=localStorage.getItem('globe_voice')==='1';
+function speakQty(inp){
+  if(!_voiceEnabled||!window.speechSynthesis)return;
+  var val=(inp.value||'').trim();
+  if(!val)return;
+  // Libellé du champ (Unités / Cartons)
+  var ig=inp.closest('.ig');
+  var lblEl=ig&&ig.querySelector('.ilbl');
+  var lbl=lblEl?lblEl.textContent.replace('📦 ','').trim():'';
+  // Nom du produit (cherche dans .cname, .pname ou le premier <b>)
+  var card=inp.closest('.card');
+  var prodEl=card&&card.querySelector('.cname,.pname,b');
+  var prod=prodEl?prodEl.textContent.trim():'';
+  // Texte à lire : "Heineken — 5 unités" ou juste "5 cartons"
+  var text=prod?(prod+', '+val+' '+lbl):(val+' '+lbl);
+  window.speechSynthesis.cancel();
+  var utt=new SpeechSynthesisUtterance(text);
+  utt.lang='fr-FR';
+  utt.rate=1.05;
+  utt.pitch=1;
+  // Préférer une voix française si disponible
+  var voices=window.speechSynthesis.getVoices();
+  var frVoice=voices.find(function(v){return v.lang.startsWith('fr');});
+  if(frVoice)utt.voice=frVoice;
+  window.speechSynthesis.speak(utt);
+}
 function scrollIntoViewAboveBar(el){
   // Utiliser visualViewport.height (zone visible sans le clavier iOS)
   // window.innerHeight ignore le clavier → scroll trop court
@@ -594,6 +621,7 @@ function scrollIntoViewAboveBar(el){
   }
 }
 function inpNext(t){
+  speakQty(t);
   var all=Array.from(document.querySelectorAll('.inp:not([disabled])'));
   var idx=all.indexOf(t);
   if(idx===-1)return;
@@ -602,6 +630,7 @@ function inpNext(t){
   else{t.blur();hideInpBar();}
 }
 function inpPrev(t){
+  speakQty(t);
   var all=Array.from(document.querySelectorAll('.inp:not([disabled])'));
   var idx=all.indexOf(t);
   if(idx>0){var p=all[idx-1];p.focus();p.select();scrollIntoViewAboveBar(p);}
@@ -1194,6 +1223,22 @@ function renderSettings(){
 
 
 
+  h+='</div>';
+
+  // Section Voix
+  h+='<div class="s-section" style="margin-top:16px">';
+  h+='<div class="s-section-title">🔊 Lecture vocale</div>';
+  h+='<div style="background:#0f172a;border-radius:10px;padding:14px;display:flex;align-items:center;justify-content:space-between;gap:12px">';
+  h+='<div>';
+  h+='<div style="color:#f1f5f9;font-size:15px;font-weight:600">Relire la quantité saisie</div>';
+  h+='<div style="color:#64748b;font-size:12px;margin-top:2px">Lit à voix haute la valeur quand tu passes au champ suivant</div>';
+  h+='</div>';
+  h+='<label style="position:relative;display:inline-block;width:52px;height:28px;flex-shrink:0">';
+  h+='<input type="checkbox" id="voice-toggle" '+((_voiceEnabled)?'checked':'')+' onchange="toggleVoice(this.checked)" style="opacity:0;width:0;height:0;position:absolute">';
+  h+='<span style="position:absolute;inset:0;border-radius:28px;background:'+(_voiceEnabled?'#0ea5e9':'#334155')+';transition:.3s;cursor:pointer" id="voice-toggle-bg"></span>';
+  h+='<span style="position:absolute;top:3px;left:'+(_voiceEnabled?'27':'3')+'px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.3s" id="voice-toggle-dot"></span>';
+  h+='</label>';
+  h+='</div>';
   h+='</div>';
 
   // Section Reset
@@ -2106,6 +2151,25 @@ function deleteSnap(idx){
 /* ============================================================
    EXPORT / IMPORT JSON
 ============================================================ */
+function toggleVoice(on){
+  _voiceEnabled=on;
+  localStorage.setItem('globe_voice',on?'1':'0');
+  // Animer le toggle manuellement
+  var bg=document.getElementById('voice-toggle-bg');
+  var dot=document.getElementById('voice-toggle-dot');
+  if(bg)bg.style.background=on?'#0ea5e9':'#334155';
+  if(dot)dot.style.left=on?'27px':'3px';
+  // Test vocal si on active
+  if(on&&window.speechSynthesis){
+    window.speechSynthesis.cancel();
+    var utt=new SpeechSynthesisUtterance('Lecture vocale activée');
+    utt.lang='fr-FR';utt.rate=1.05;
+    var voices=window.speechSynthesis.getVoices();
+    var frVoice=voices.find(function(v){return v.lang.startsWith('fr');});
+    if(frVoice)utt.voice=frVoice;
+    window.speechSynthesis.speak(utt);
+  }
+}
 function resetQuantitesOnly(){
   if(!confirm('🔄 Remettre toutes les quantités à zéro ?\nLes références précédentes seront conservées.'))return;
   Object.keys(stock).forEach(function(k){
