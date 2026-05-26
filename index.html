@@ -2386,9 +2386,13 @@ async function syncNow(){
   var token=localStorage.getItem(KEY_GIST_TOKEN);
   var gistId=localStorage.getItem(KEY_GIST_ID);
   if(!token||!gistId){showToast('❌ Configure le Gist dans les Paramètres');return;}
+  // S'assurer que le layout de chaque emplacement est bien en mémoire et sauvegardé
+  LIEUX.forEach(function(l){getLayout(l.id);});
+  saveCatsToStorage();
+  saveLayout();
   clearTimeout(_gistPushTimer);
   await gistPush();
-  if(!_gistLastError)showToast('☁️ Synchronisé !');
+  if(!_gistLastError)showToast('☁️ Tout synchronisé !');
 }
 
 function updateSyncStatus(){
