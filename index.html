@@ -579,6 +579,32 @@ history.replaceState({page:'inv'},'','#');
 ============================================================ */
 /* ── Lecture vocale de la quantité ── */
 var _voiceEnabled=localStorage.getItem('globe_voice')==='1';
+var _bestFrVoice=null;
+
+// Sélectionne la meilleure voix française disponible
+// Priorité : Enhanced > Premium > local > compacte
+function _pickBestFrVoice(){
+  var voices=window.speechSynthesis.getVoices();
+  var fr=voices.filter(function(v){return v.lang.startsWith('fr');});
+  if(!fr.length)return null;
+  var score=function(v){
+    var n=v.name.toLowerCase();
+    if(n.includes('enhanced')||n.includes('premium'))return 4;
+    if(v.localService&&!n.includes('compact'))return 3;
+    if(!n.includes('compact'))return 2;
+    return 1;
+  };
+  fr.sort(function(a,b){return score(b)-score(a);});
+  return fr[0];
+}
+// Charger la voix dès que la liste est prête (async sur Chrome/iOS)
+if(window.speechSynthesis){
+  window.speechSynthesis.onvoiceschanged=function(){
+    _bestFrVoice=_pickBestFrVoice();
+  };
+  _bestFrVoice=_pickBestFrVoice(); // tentative synchrone (Safari)
+}
+
 function speakQty(inp){
   if(!_voiceEnabled||!window.speechSynthesis)return;
   var val=(inp.value||'').trim();
@@ -587,21 +613,18 @@ function speakQty(inp){
   var ig=inp.closest('.ig');
   var lblEl=ig&&ig.querySelector('.ilbl');
   var lbl=lblEl?lblEl.textContent.replace('📦 ','').trim():'';
-  // Nom du produit (cherche dans .cname, .pname ou le premier <b>)
+  // Nom du produit
   var card=inp.closest('.card');
   var prodEl=card&&card.querySelector('.cname,.pname,b');
   var prod=prodEl?prodEl.textContent.trim():'';
-  // Texte à lire : "Heineken — 5 unités" ou juste "5 cartons"
   var text=prod?(prod+', '+val+' '+lbl):(val+' '+lbl);
   window.speechSynthesis.cancel();
   var utt=new SpeechSynthesisUtterance(text);
   utt.lang='fr-FR';
-  utt.rate=1.05;
+  utt.rate=1.0;
   utt.pitch=1;
-  // Préférer une voix française si disponible
-  var voices=window.speechSynthesis.getVoices();
-  var frVoice=voices.find(function(v){return v.lang.startsWith('fr');});
-  if(frVoice)utt.voice=frVoice;
+  var voice=_bestFrVoice||_pickBestFrVoice();
+  if(voice)utt.voice=voice;
   window.speechSynthesis.speak(utt);
 }
 function scrollIntoViewAboveBar(el){
@@ -2163,10 +2186,9 @@ function toggleVoice(on){
   if(on&&window.speechSynthesis){
     window.speechSynthesis.cancel();
     var utt=new SpeechSynthesisUtterance('Lecture vocale activée');
-    utt.lang='fr-FR';utt.rate=1.05;
-    var voices=window.speechSynthesis.getVoices();
-    var frVoice=voices.find(function(v){return v.lang.startsWith('fr');});
-    if(frVoice)utt.voice=frVoice;
+    utt.lang='fr-FR';utt.rate=1.0;
+    var voice=_bestFrVoice||_pickBestFrVoice();
+    if(voice)utt.voice=voice;
     window.speechSynthesis.speak(utt);
   }
 }
