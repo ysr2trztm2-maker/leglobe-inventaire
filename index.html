@@ -578,20 +578,18 @@ history.replaceState({page:'inv'},'','#');
    SAISIE RAPIDE — Barre iOS + Entrée/Tab
 ============================================================ */
 function scrollIntoViewAboveBar(el){
-  // Scroll l'élément dans la zone visible en tenant compte de la barre fixe du bas
+  // Utiliser visualViewport.height (zone visible sans le clavier iOS)
+  // window.innerHeight ignore le clavier → scroll trop court
   var bar=document.getElementById('inp-bar');
   var barH=bar&&bar.offsetHeight||70;
   var hdrH=parseInt(document.documentElement.style.getPropertyValue('--header-h'))||60;
   var rect=el.getBoundingClientRect();
-  var viewH=window.innerHeight;
-  // Zone visible = entre hdrH (header) et viewH-barH (barre bas)
+  var visH=window.visualViewport?window.visualViewport.height:window.innerHeight;
   var visTop=hdrH+8;
-  var visBot=viewH-barH-12;
+  var visBot=visH-barH-16;
   if(rect.top<visTop){
-    // Trop haut — remonter
     window.scrollBy({top:rect.top-visTop,behavior:'smooth'});
   } else if(rect.bottom>visBot){
-    // Trop bas (caché derrière la barre) — descendre
     window.scrollBy({top:rect.bottom-visBot,behavior:'smooth'});
   }
 }
