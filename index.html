@@ -606,10 +606,12 @@ function hideInpBar(){
   document.body.appendChild(bar);
 })();
 var _inpActive=null;
+var _inpBarTouched=false; // true si on touche la barre elle-même
 document.addEventListener('focusin',function(e){
   var t=e.target;
   if(!t||!t.classList.contains('inp'))return;
   _inpActive=t;
+  _inpBarTouched=false;
   var bar=document.getElementById('inp-bar');
   if(bar){
     bar.style.display='flex';
@@ -621,9 +623,18 @@ document.addEventListener('focusin',function(e){
 document.addEventListener('focusout',function(e){
   var t=e.target;
   if(!t||!t.classList.contains('inp'))return;
+  // Délai plus long (500ms) pour absorber les pertes de focus momentanées sur iOS
+  // dues aux mutations du DOM (renderStats, renderTabs) pendant la saisie
   setTimeout(function(){
+    if(_inpBarTouched)return; // on vient de cliquer Préc/Suivant, garder la barre
     if(!document.activeElement||!document.activeElement.classList.contains('inp'))hideInpBar();
-  },150);
+  },500);
+});
+// Marquer quand on touche la barre (Préc / Suivant) pour ne pas la cacher
+document.addEventListener('pointerdown',function(e){
+  var bar=document.getElementById('inp-bar');
+  if(bar&&bar.contains(e.target)){_inpBarTouched=true;}
+  else{_inpBarTouched=false;}
 });
 document.addEventListener('keydown',function(e){
   if(e.key!=='Enter'&&e.key!=='Tab')return;
