@@ -1050,9 +1050,10 @@ function renderInv(){
     h+='<div class="prod-img-wrap">'+imgTag(p,cat.icon)+'</div>';
     h+='<div class="prod-info"><div class="pname">'+p.n+'</div><div class="pmeta">'+p.pp+'/carton · seuil:'+(s.sl||p.sl||p.pp)+(s.pv>0?' · réf:'+s.pv:'')+'</div></div>';
     h+='</div><span class="sbadge '+sbc+'" id="sb_'+k+'">'+sbl+'</span></div>';
+    var lentry=getLayoutEntry(curLieu,k);
     h+='<div class="cinputs">';
     h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">Unités</div><input class="inp '+l.ic+'" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.u+'" placeholder="0" oninput="updLieu(\''+k+'\',\'u\',this.value)"></div>';
-    h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">📦 Cartons</div><input class="inp '+l.ic+'" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.p+'" placeholder="0" oninput="updLieu(\''+k+'\',\'p\',this.value)"></div>';
+    if(!lentry||!lentry.noCarton){h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">📦 Cartons</div><input class="inp '+l.ic+'" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.p+'" placeholder="0" oninput="updLieu(\''+k+'\',\'p\',this.value)"></div>';}
     h+='</div>';
     var pp=getProdByKey(k).pp||1;
     var ctn=hasVal(k)?Math.floor(t/pp):0;
@@ -1780,6 +1781,17 @@ function layoutExclude(lid,idx){
   renderLieuMode();
   showToast(list[idx].excluded?'🚫 Masqué de cet emplacement':'✅ Réactivé');
 }
+function layoutToggleCarton(lid,idx){
+  var list=getLayout(lid);
+  list[idx].noCarton=!list[idx].noCarton;
+  saveLayout();
+  renderLieuMode();
+  showToast(list[idx].noCarton?'📦 Cartons masqués pour ce produit':'📦 Cartons activés pour ce produit');
+}
+function getLayoutEntry(lid,k){
+  var list=getLayout(lid);
+  return list.find(function(e){return e.k===k;})||null;
+}
 
 function renderLieuMode(){
   var l=getLieu(curLieu);
@@ -1816,7 +1828,8 @@ function renderLieuMode(){
         +'background:'+(isSel?'#1e3a5f':'#0a1628')+';border:1px solid '+(isSel?'#6366f1':'#1e2d45')+(entry.excluded?';opacity:.4':'')+'">';
       h+='<span style="font-size:16px;color:#475569">⠿</span>';
       h+='<span style="flex:1;font-size:14px;font-weight:700;color:'+(entry.excluded?'#475569':'#e2e8f0')+'">'+cat.icon+' '+p.n+'</span>';
-      h+='<span style="font-size:12px;color:'+tc+';font-weight:700;margin-right:6px">'+(t>0?t:'—')+'</span>';
+      h+='<span style="font-size:12px;color:'+tc+';font-weight:700;margin-right:4px">'+(t>0?t:'—')+'</span>';
+      h+='<button onclick="event.stopPropagation();layoutToggleCarton(\''+curLieu+'\','+idx+')" title="Afficher/masquer cartons" style="background:'+(entry.noCarton?'#1e3a5f':'#0a1628')+';color:'+(entry.noCarton?'#60a5fa':'#475569')+';border:1px solid '+(entry.noCarton?'#3b82f6':'#1e2d45')+';border-radius:6px;padding:3px 7px;font-size:12px;cursor:pointer;margin-right:4px">📦'+(entry.noCarton?'✗':'✓')+'</button>';
       h+='<button onclick="event.stopPropagation();layoutExclude(\''+curLieu+'\','+idx+')" style="background:'+(entry.excluded?'#1e2d45':'#2d1b1b')+';color:'+(entry.excluded?'#6366f1':'#ef4444')+';border:1px solid '+(entry.excluded?'#6366f1':'#7f1d1d')+';border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer">'+(entry.excluded?'👁️':'🚫')+'</button>';
       h+='</div>';
     } else {
@@ -1849,8 +1862,10 @@ function renderLieuMode(){
       h+='<div class="cinputs">';
       h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">Unités</div>';
       h+='<input class="inp '+l.ic+'" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.u+'" placeholder="0" oninput="updLieu(\''+k+'\',\'u\',this.value)"></div>';
-      h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">📦 Cartons</div>';
-      h+='<input class="inp '+l.ic+'" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.p+'" placeholder="0" oninput="updLieu(\''+k+'\',\'p\',this.value)"></div>';
+      if(!entry.noCarton){
+        h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">📦 Cartons</div>';
+        h+='<input class="inp '+l.ic+'" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.p+'" placeholder="0" oninput="updLieu(\''+k+'\',\'p\',this.value)"></div>';
+      }
       h+='</div>';
       var lmctn=t>0?Math.floor(t/lmpp):0,lmrem=t>0?t%lmpp:0;
       var lmctnStr=t>0?(lmctn>0&&lmrem>0?(lmctn+'ctn+'+lmrem+'u'):(lmctn>0?(lmctn+'ctn'):(lmrem+'u'))):'';
@@ -1906,9 +1921,10 @@ function renderAlert(){
     h+='<div class="prod-info"><div class="pname">'+a.p.n+'</div>';
     h+='<div class="pmeta">'+a.cat.icon+' '+a.cat.label+' · seuil:'+(stock[a.k]&&stock[a.k].sl||a.p.sl||a.p.pp)+'</div></div>';
     h+='</div><span class="sbadge '+(isE?'s-e':'s-w')+'">'+(isE?'❌ Rupture':'⚠️ Faible')+'</span></div>';
+    var alentry=getLayoutEntry(curLieu,a.k);
     h+='<div class="cinputs">';
     h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">Unités</div><input class="inp '+l.ic+'" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.u+'" placeholder="0" oninput="updLieu(\''+a.k+'\',\'u\',this.value)"></div>';
-    h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">📦 Cartons</div><input class="inp '+l.ic+'" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.p+'" placeholder="0" oninput="updLieu(\''+a.k+'\',\'p\',this.value)"></div>';
+    if(!alentry||!alentry.noCarton){h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">📦 Cartons</div><input class="inp '+l.ic+'" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.p+'" placeholder="0" oninput="updLieu(\''+a.k+'\',\'p\',this.value)"></div>';}
     h+='</div>';
     h+='<div class="ctot"><div class="ctot-row"><span class="tlbl">TOTAL CUMULÉ</span>';
     h+='<span class="tval" style="color:'+tc+'" id="tv_'+a.k+'">'+(hasVal(a.k)?a.t:'—')+'</span></div>';
@@ -2056,9 +2072,10 @@ function renderSearch(){
       h+='<div class="prod-img-wrap">'+imgTag(p,cat.icon)+'</div>';
       h+='<div class="prod-info"><div class="pname">'+p.n+'</div><div class="pmeta">'+p.pp+'/carton · seuil:'+(s.sl||p.sl||p.pp)+'</div></div>';
       h+='</div><span class="sbadge '+sbc+'">'+sbl+'</span></div>';
+      var slentry=getLayoutEntry(curLieu,k);
       h+='<div class="cinputs">';
       h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">Unités</div><input class="inp '+l.ic+'" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.u+'" placeholder="0" oninput="updLieu(\''+k+'\',\'u\',this.value)"></div>';
-      h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">📦 Cartons</div><input class="inp '+l.ic+'" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.p+'" placeholder="0" oninput="updLieu(\''+k+'\',\'p\',this.value)"></div>';
+      if(!slentry||!slentry.noCarton){h+='<div class="ig"><div class="ilbl" style="color:'+getInpColor(curLieu)+'">📦 Cartons</div><input class="inp '+l.ic+'" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="'+lx.p+'" placeholder="0" oninput="updLieu(\''+k+'\',\'p\',this.value)"></div>';}
       h+='</div>';
       h+='<div class="ctot"><div class="ctot-row"><span class="tlbl">TOTAL CUMULÉ</span>';
       h+='<span class="tval" style="color:'+tc+'" id="tv_'+k+'">'+(hasVal(k)?t:"—")+'</span></div>';
