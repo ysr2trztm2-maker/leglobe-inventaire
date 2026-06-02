@@ -1020,7 +1020,7 @@ function renderTabs(){
   var el=document.getElementById("tabs");if(!el)return;
   var h="";
   CATS.forEach(function(cat){
-    var a=0;cat.prods.forEach(function(_,i){var s=getSt(key(cat.id,i));if(s==="w"||s==="e")a++;});
+    var a=0;cat.prods.forEach(function(p,i){if(p.archived)return;var s=getSt(key(cat.id,i));if(s==="w"||s==="e")a++;});
     var on=cat.id===curTab;
     h+='<button class="tab'+(on?" on":"")+'" style="'+(on?"background:"+cat.color+";border-color:"+cat.color+";":"")+'" onclick="switchTab(\''+cat.id+'\')">';
     h+=cat.icon+" "+cat.label;if(a)h+=' <span class="tbadge">'+a+'</span>';h+='</button>';
@@ -1038,6 +1038,7 @@ function renderInv(){
   var l=getLieu(curLieu);
   var h='<div style="padding:4px 0 10px;font-size:11px;color:#64748b">Saisie pour <strong style="color:#f1f5f9">'+l.label+'</strong></div>';
   cat.prods.forEach(function(p,i){
+    if(p.archived)return; // produit archivé — ne pas afficher
     var k=key(cat.id,i),s=stock[k]||{pv:0,sl:p.sl||p.pp,lieux:{}},st=getSt(k),t=getTotal(k),pv=getPrev(k);
     var vr=hasVal(k)?t-pv:null;
     var tc="#334155",sbc="",sbl="";
@@ -1203,17 +1204,35 @@ function renderSettings(){
     h+='<span class="cat-chevron" id="chev_'+cat.id+'">›</span>';
     h+='</div>';
     h+='<div class="prod-rows" id="prodrows_'+cat.id+'">';
-    cat.prods.forEach(function(p,i){
-      var pFirst=i===0,pLast=i===cat.prods.length-1;
+    var activeProds=[],archivedProds=[];
+    cat.prods.forEach(function(p,i){(p.archived?archivedProds:activeProds).push({p:p,i:i});});
+    activeProds.forEach(function(obj){
+      var p=obj.p,i=obj.i;
       h+='<div class="prod-row" id="prodrow_'+cat.id+'_'+i+'" data-type="prod" data-catid="'+cat.id+'" data-idx="'+i+'">';
       h+='<div class="drag-handle" data-type="prod" data-catid="'+cat.id+'" data-idx="'+i+'" onclick="tapDrag(\'prod\','+i+',\''+cat.id+'\')">⠿</div>';
       h+='<div class="prod-row-img">'+(p.img?'<img src="'+p.img+'" onerror="this.parentNode.innerHTML=\''+cat.icon+'\'">':cat.icon)+'</div>';
       h+='<div class="prod-row-info"><div class="prod-row-name">'+p.n+'</div><div class="prod-row-meta">'+p.pp+'/carton · seuil:'+(p.sl||p.pp)+'</div></div>';
       h+='<div class="prod-row-btns">';
-      h+='<button class="icon-btn primary" onclick="openEditProd(\''+cat.id+'\','+i+')">✏️</button>';
-      h+='<button class="icon-btn danger" onclick="openDelProd(\''+cat.id+'\','+i+')">🗑️</button>';
+      h+='<button class="icon-btn primary" onclick="openEditProd(\''+cat.id+'\','+i+')" title="Modifier">✏️</button>';
+      h+='<button class="icon-btn" style="background:#1e2d45;color:#94a3b8;border:1px solid #334155" onclick="archiveProd(\''+cat.id+'\','+i+')" title="Archiver">🗄️</button>';
+      h+='<button class="icon-btn danger" onclick="openDelProd(\''+cat.id+'\','+i+')" title="Supprimer">🗑️</button>';
       h+='</div></div>';
     });
+    if(archivedProds.length){
+      h+='<div style="margin:6px 0 2px;padding:6px 8px;background:#0a1628;border-radius:8px;border:1px solid #1e2d45">';
+      h+='<div style="color:#64748b;font-size:11px;font-weight:700;margin-bottom:6px">🗄️ ARCHIVÉS ('+archivedProds.length+')</div>';
+      archivedProds.forEach(function(obj){
+        var p=obj.p,i=obj.i;
+        h+='<div class="prod-row" style="opacity:.55;border-color:#1e2d45">';
+        h+='<div class="prod-row-img" style="filter:grayscale(1)">'+(p.img?'<img src="'+p.img+'" onerror="this.parentNode.innerHTML=\''+cat.icon+'\'">':cat.icon)+'</div>';
+        h+='<div class="prod-row-info"><div class="prod-row-name" style="text-decoration:line-through;color:#64748b">'+p.n+'</div><div class="prod-row-meta">archivé</div></div>';
+        h+='<div class="prod-row-btns">';
+        h+='<button class="icon-btn primary" onclick="unarchiveProd(\''+cat.id+'\','+i+')" title="Réactiver">↩️</button>';
+        h+='<button class="icon-btn danger" onclick="openDelProd(\''+cat.id+'\','+i+')" title="Supprimer définitivement">🗑️</button>';
+        h+='</div></div>';
+      });
+      h+='</div>';
+    }
     h+='<button class="add-btn" onclick="openAddProd(\''+cat.id+'\')">＋ Ajouter un produit</button>';
     h+='</div></div>';
   });
@@ -1493,6 +1512,22 @@ function saveProd(){
   renderSettings();
 }
 
+function archiveProd(catId,idx){
+  var cat=getCat(catId);
+  if(!cat||!cat.prods[idx])return;
+  cat.prods[idx].archived=true;
+  saveCatsToStorage();
+  renderSettings();
+  showToast('🗄️ "'+cat.prods[idx].n+'" archivé — réactivable depuis Paramètres');
+}
+function unarchiveProd(catId,idx){
+  var cat=getCat(catId);
+  if(!cat||!cat.prods[idx])return;
+  cat.prods[idx].archived=false;
+  saveCatsToStorage();
+  renderSettings();
+  showToast('✅ "'+cat.prods[idx].n+'" réactivé');
+}
 function openDelProd(catId,idx){
   delProdCatId=catId;delProdIdx=idx;
   var p=getCat(catId).prods[idx];
@@ -1708,28 +1743,28 @@ function toggleLieuMode(){
 // Retourne la liste ordonnée pour un lieu (initialise si vide)
 function getLayout(lid){
   if(!lieuLayout[lid]){
-    // Construire liste par défaut = tous les produits dans l'ordre CATS
+    // Construire liste par défaut = tous les produits actifs dans l'ordre CATS
     var list=[];
     CATS.forEach(function(cat){
       cat.prods.forEach(function(p,i){
-        list.push({k:key(cat.id,i),excluded:false});
+        if(!p.archived)list.push({k:key(cat.id,i),excluded:false});
       });
     });
     lieuLayout[lid]=list;
   } else {
-    // Synchroniser : ajouter les nouveaux produits absents
+    // Synchroniser : ajouter les nouveaux produits actifs absents
     var existing={};
     lieuLayout[lid].forEach(function(e){existing[e.k]=true;});
     CATS.forEach(function(cat){
       cat.prods.forEach(function(p,i){
         var k=key(cat.id,i);
-        if(!existing[k])lieuLayout[lid].push({k:k,excluded:false});
+        if(!p.archived&&!existing[k])lieuLayout[lid].push({k:k,excluded:false});
       });
     });
-    // Supprimer les produits qui n'existent plus
+    // Supprimer les produits qui n'existent plus OU qui sont archivés
     lieuLayout[lid]=lieuLayout[lid].filter(function(e){
       var found=false;
-      CATS.forEach(function(cat){cat.prods.forEach(function(p,i){if(key(cat.id,i)===e.k)found=true;});});
+      CATS.forEach(function(cat){cat.prods.forEach(function(p,i){if(!p.archived&&key(cat.id,i)===e.k)found=true;});});
       return found;
     });
   }
