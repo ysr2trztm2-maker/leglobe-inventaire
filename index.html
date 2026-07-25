@@ -1648,8 +1648,20 @@ function doExport(){
     });rows.push("");
   });
   var csv="\uFEFF"+rows.join("\n");
+  var fname="Inventaire_GLOBE_"+today.replace(/\//g,"-")+".csv";
+  var blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  var file=new File([blob],fname,{type:"text/csv",lastModified:Date.now()});
+  if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+    navigator.share({files:[file],title:"Inventaire LE GLOBE",text:"Export CSV \u2014 "+today}).catch(function(err){
+      if(err.name!=="AbortError")fallbackDownloadCSV(csv,fname);
+    });
+  } else {
+    fallbackDownloadCSV(csv,fname);
+  }
+}
+function fallbackDownloadCSV(csv,fname){
   var a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);
-  a.download="Inventaire_GLOBE_"+today.replace(/\//g,"-")+".csv";
+  a.download=fname;
   document.body.appendChild(a);a.click();a.remove();
 }
 
@@ -2284,11 +2296,18 @@ function exportJSON(){
   };
   var json=JSON.stringify(data,null,2);
   var today=new Date().toLocaleDateString("fr-FR").replace(/\//g,"-");
-  var a=document.createElement("a");
-  a.href="data:application/json;charset=utf-8,"+encodeURIComponent(json);
-  a.download="GLOBE_Sauvegarde_"+today+".json";
-  document.body.appendChild(a);a.click();a.remove();
-  showToast("✅ Sauvegarde téléchargée !");
+  var fname="GLOBE_Sauvegarde_"+today+".json";
+  var blob=new Blob([json],{type:"application/json"});
+  var file=new File([blob],fname,{type:"application/json",lastModified:Date.now()});
+  if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+    navigator.share({files:[file],title:"Sauvegarde LE GLOBE",text:"Export JSON — "+today}).then(function(){
+      showToast("✅ Sauvegarde envoyée !");
+    }).catch(function(err){
+      if(err.name!=="AbortError")fallbackDownload(json,fname);
+    });
+  } else {
+    fallbackDownload(json,fname);
+  }
 }
 
 function saveToiCloud(){
