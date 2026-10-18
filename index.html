@@ -324,6 +324,17 @@ html[data-dens="2"] .ctot-tag{padding:1px 7px;font-size:10px}
 
 /* ===== MODE FICHE ===== */
 .fiche-top{display:flex;align-items:center;gap:8px;padding:6px 0}
+html.fiche-on header #stats,html.fiche-on header #dashboard-bar{display:none}
+html.fiche-on header .hrow{margin-bottom:0}
+html.fiche-tight .fiche-cat{display:none}
+html.fiche-tight .fiche-wrap .prod-img-wrap{width:54px !important;height:54px !important;font-size:26px !important}
+html.fiche-tight .fiche-wrap .prod-img-wrap img{width:54px !important;height:54px !important}
+html.fiche-tight .fiche-wrap .ctot-detail{display:none !important}
+html.fiche-tight .fiche-wrap .fiche-hero{padding:6px 12px 2px}
+html.fiche-tight .fiche-wrap .cinputs{padding:4px 12px 6px}
+html.fiche-tight .fiche-wrap .inp{min-height:44px;font-size:26px !important;padding:4px 3px !important}
+html.fiche-tight .fiche-top{padding:3px 0}
+html.fiche-tight .fiche-bar{margin-bottom:4px}
 .fiche-btn{background:#1e2d45;color:#e2e8f0;border:1px solid #334155;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer;-webkit-appearance:none;white-space:nowrap}
 .fiche-count{font-size:14px;font-weight:800;font-family:monospace;color:#f1f5f9;white-space:nowrap}
 .fiche-jump{flex:1;min-width:0;background:#111827;border:1px solid #1e2d45;color:#f1f5f9;border-radius:8px;padding:8px;-webkit-appearance:none}
@@ -347,7 +358,7 @@ html body .fiche-wrap .inp{padding:6px 3px !important;font-size:30px !important;
 html body .fiche-wrap .ctot{padding:8px 12px 10px}
 html body .fiche-wrap .tval{font-size:28px}
 html body .fiche-wrap .tlbl{font-size:12px}
-.fiche-pad{position:fixed;left:0;right:0;z-index:150;background:#0d1526;border-top:1px solid #1e2d45;padding:8px 10px;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,44px);gap:6px}
+.fiche-pad{position:fixed;left:0;right:0;z-index:150;background:#0d1526;border-top:1px solid #1e2d45;padding:8px 10px;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,clamp(38px,5.3vh,46px));gap:6px}
 .kp{border:none;border-radius:10px;background:#1e293b;color:#f1f5f9;font-size:22px;font-weight:700;cursor:pointer;-webkit-appearance:none;touch-action:manipulation;-webkit-user-select:none;user-select:none;font-family:-apple-system,sans-serif}
 .kp:active{background:#334155}
 .kp-fn{background:#111827;color:#94a3b8;font-size:21px}
@@ -1285,6 +1296,16 @@ document.addEventListener('keydown',function(e){
   else if(e.key==='Backspace'){e.preventDefault();ficheKey('back');}
   else if(e.key==='Enter'){e.preventDefault();ficheKeyNext();}
 });
+function _ficheFit(){
+  var root=document.documentElement;
+  root.classList.remove('fiche-tight');
+  var pad=document.getElementById('fiche-pad'),det=document.querySelector('.fiche-wrap .ctot-detail'),tot=document.querySelector('.fiche-wrap .ctot-row');
+  if(!pad||!tot)return;
+  var padTop=pad.getBoundingClientRect().top;
+  var bot=function(){var d=document.querySelector('.fiche-wrap .ctot-detail');var b=tot.getBoundingClientRect().bottom;if(d&&d.children.length)b=Math.max(b,d.getBoundingClientRect().bottom);return b;};
+  if(bot()>padTop){root.classList.add('fiche-tight');}
+}
+window.addEventListener('resize',function(){if(_inFiche())_ficheFit();});
 function renderFiche(){
   var el=document.getElementById('content');
   var list=_ficheList(),n=list.length;
@@ -1352,6 +1373,7 @@ function renderFiche(){
   el.innerHTML=h;
   ficheField='u';ficheReplace=true;
   _ficheShowField('u');_ficheShowField('p');_ficheMarkActive();
+  _ficheFit();
 }
 
 function renderSum(){
@@ -1384,7 +1406,17 @@ function renderSum(){
   document.getElementById("content").innerHTML=h+"</div>";
 }
 
+function _fixSticky(){
+  var hdr=document.querySelector('header'),lieu=document.querySelector('.lieu-selector');
+  if(hdr)document.documentElement.style.setProperty('--header-h',hdr.offsetHeight+'px');
+  if(lieu&&hdr)lieu.style.top=hdr.offsetHeight+'px';
+}
 function renderContent(){
+  var _fo=!!(ficheMode&&!sumView&&!searchQuery&&!quickMode&&!alertMode&&!lieuMode);
+  var _had=document.documentElement.classList.contains('fiche-on');
+  document.documentElement.classList.toggle('fiche-on',_fo);
+  if(!_fo)document.documentElement.classList.remove('fiche-tight');
+  if(_fo!==_had)_fixSticky();
   if(searchQuery){renderSearch();return;}
   if(quickMode){renderQuick();return;}
   if(alertMode){renderAlert();return;}
